@@ -1,5 +1,4 @@
 ﻿using System;
-
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -10,10 +9,8 @@ namespace OpenTK_winforms_z02
 {
     public partial class Form1 : Form
     {
-
         //Stări de control cameră.
         private int eyePosX, eyePosY, eyePosZ;
-
 
         private Point mousePos;
         private float camDepth;
@@ -28,19 +25,26 @@ namespace OpenTK_winforms_z02
         private bool lightON;
         private bool lightON_0;
 
+        private bool lightON_1 = true; // Pornită implicit
+        // Poziție inițială: Deasupra cubului (Y = 20)
+        private float[] valuesPosition1 = new float[] { 0.0f, 100.0f, 0.0f, 1.0f };
+        // Culoare: O facem GALBENĂ/CALDĂ pentru a o distinge de prima
+        private float[] valuesAmbient1 = new float[] { 0.0f, 0.0f, 0.0f, 1.0f };
+        private float[] valuesDiffuse1 = new float[] { 1.0f, 1.0f, 0.0f, 1.0f };
+        private float[] valuesSpecular1 = new float[] { 1.0f, 1.0f, 1.0f, 1.0f };
+        // ----------------------------------------------------------------------
+
         //Stări de control obiecte 3D.
         private string statusCube;
 
-
-
         //Structuri de stocare a vertexurilor și a listelor de vertexuri.
-        private int[,] arrVertex = new int[50, 3];         //Stocam matricea de vertexuri; 3 coloane vor reține informația pentru X, Y, Z. Nr. de linii definește nr. de vertexuri.
+        private int[,] arrVertex = new int[50, 3];         //Stocam matricea de vertexuri; 3 coloane vor reține informația pentru X, Y, Z.
         private int nVertex;
 
-        private int[] arrQuadsList = new int[100];        //Lista de vertexuri pentru construirea cubului prin intermediul quadurilor. Ne bazăm pe lista de vertexuri.
+        private int[] arrQuadsList = new int[100];        //Lista de vertexuri pentru construirea cubului prin intermediul quadurilor.
         private int nQuadsList;
 
-        private int[] arrTrianglesList = new int[100];    //Lista de vertexuri pentru construirea cubului prin intermediul triunghiurilor. Ne bazăm pe lista de vertexuri.
+        private int[] arrTrianglesList = new int[100];    //Lista de vertexuri pentru construirea cubului prin intermediul triunghiurilor.
         private int nTrianglesList;
 
         //Fișiere de in/out pentru manipularea vertexurilor.
@@ -49,19 +53,12 @@ namespace OpenTK_winforms_z02
         private string fileTList = "trianglesVertexList.txt";
         private bool statusFiles;
 
-
-
         //Dim valuesAmbientTemplate0() As Single = {255, 0, 0, 1.0}      //Valori alternative ambientale(lumină colorată)
         //# SET 1
-        //private float[] valuesAmbientTemplate0 = new float[] { 0.1f, 0.1f, 0.1f, 1.0f };
-        //private float[] valuesDiffuseTemplate0 = new float[] { 1.0f, 1.0f, 1.0f, 1.0f };
-        //private float[] valuesSpecularTemplate0 = new float[] { 0.1f, 0.1f, 0.1f, 1.0f };
-        //private float[] valuesPositionTemplate0 = new float[] { 0.0f, 0.0f, 5.0f, 1.0f };
-        //# SET 2
-        private float[] valuesAmbientTemplate0 = new float[] { 0.2f, 0.2f, 0.2f, 1.0f };
+        private float[] valuesAmbientTemplate0 = new float[] { 0.1f, 0.1f, 0.1f, 1.0f };
         private float[] valuesDiffuseTemplate0 = new float[] { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] valuesSpecularTemplate0 = new float[] { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] valuesPositionTemplate0 = new float[] { 1.0f, 1.0f, 1.0f, 0.0f };
+        private float[] valuesSpecularTemplate0 = new float[] { 0.1f, 0.1f, 0.1f, 1.0f };
+        private float[] valuesPositionTemplate0 = new float[] { 0.0f, 0.0f, 5.0f, 1.0f };
 
         private float[] valuesAmbient0 = new float[4];
         private float[] valuesDiffuse0 = new float[4];
@@ -71,29 +68,61 @@ namespace OpenTK_winforms_z02
 
         //-----------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------
-        //   ON_LOAD
-        public Form1() {
+        //    ON_LOAD - CONSTRUCTOR MODIFICAT PENTRU CERINȚA "ToDo"
+        public Form1()
+        {
             InitializeComponent();
 
-            /// TODO:
-            /// În fișierul <Form1.Designer.cs>, la linia 26 înlocuiți conțînutul original cu linia de mai jos:
-            ///         this.GlControl1 = new OpenTK.GLControl(new OpenTK.Graphics.GraphicsMode(32, 24, 0, 8));
-            /// Acest mod de inițializare va activa antialiasing-ul (multisampling MSAA la 8x).
-            /// ATENTȚIE!
-            /// Veți pierde designerul grafic. Aplicația funcționează dar pentru a putea accesa designerul grafic va trebui să reveniți la constructorul
-            /// implicit al controlului OpenTK!
+            // Reinițializăm GlControl manual pentru a activa Anti-Aliasing (MSAA 8x) și DepthBuffer
+            try
+            {
+                // 1. Salvăm poziția și mărimea controlului existent pus de Designer
+                System.Drawing.Point loc = this.GlControl1.Location;
+                System.Drawing.Size sz = this.GlControl1.Size;
+
+                // 2. Îl eliminăm pe cel vechi
+                this.Controls.Remove(this.GlControl1);
+
+                // 3. Creăm unul nou cu setări grafice superioare
+                OpenTK.Graphics.GraphicsMode mode = new OpenTK.Graphics.GraphicsMode(32, 24, 0, 8);
+                this.GlControl1 = new OpenTK.GLControl(mode);
+
+                // 4. Setăm proprietățile înapoi
+                this.GlControl1.BackColor = System.Drawing.Color.Black;
+                this.GlControl1.Location = loc;
+                this.GlControl1.Size = sz;
+                this.GlControl1.VSync = false;
+                this.GlControl1.TabIndex = 0;
+                this.GlControl1.Name = "GlControl1"; // Important pentru referințe interne
+
+                // 5. RECONECTĂM EVENIMENTELE (ESENȚIAL PENTRU INTERACȚIUNE!)
+                this.GlControl1.Paint += new System.Windows.Forms.PaintEventHandler(this.GlControl1_Paint);
+                this.GlControl1.KeyDown += new KeyEventHandler(this.GlControl1_KeyDown); // Adăugat pentru tastatură
+                this.GlControl1.MouseDown += new MouseEventHandler(this.GlControl1_MouseDown);
+                this.GlControl1.MouseMove += new MouseEventHandler(this.GlControl1_MouseMove);
+                this.GlControl1.MouseUp += new MouseEventHandler(this.GlControl1_MouseUp);
+
+                // 6. Îl adăugăm înapoi în Formă
+                this.Controls.Add(this.GlControl1);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Eroare la inițializarea contextului grafic: " + ex.Message);
+            }
+            // ----------------------------------------------
         }
 
-        private void Form1_Load(object sender, EventArgs e) {
-
+        private void Form1_Load(object sender, EventArgs e)
+        {
             SetupValues();
             SetupWindowGUI();
         }
 
         //-----------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------
-        //   SETARI INIȚIALE
-        private void SetupValues() {
+        //    SETARI INIȚIALE
+        private void SetupValues()
+        {
             eyePosX = 100;
             eyePosY = 100;
             eyePosZ = 50;
@@ -108,8 +137,8 @@ namespace OpenTK_winforms_z02
         }
 
 
-        private void SetupWindowGUI() {
-
+        private void SetupWindowGUI()
+        {
             setControlMouse2D(false);
             setControlMouse3D(false);
 
@@ -130,19 +159,19 @@ namespace OpenTK_winforms_z02
 
         //-----------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------
-        //   MANIPULARE VERTEXURI ȘI LISTE DE COORDONATE.
-        //Încărcarea coordonatelor vertexurilor și lista de compunere a obiectelor 3D.
-        private void loadVertex() {
-
-            //Testăm dacă fișierul există
-            try {
+        //    MANIPULARE VERTEXURI ȘI LISTE DE COORDONATE.
+        private void loadVertex()
+        {
+            try
+            {
                 StreamReader fileReader = new StreamReader((fileVertex));
                 nVertex = Convert.ToInt32(fileReader.ReadLine().Trim());
                 Console.WriteLine("Vertexuri citite: " + nVertex.ToString());
 
                 string tmpStr = "";
                 string[] str = new string[3];
-                for (int i = 0; i < nVertex; i++) {
+                for (int i = 0; i < nVertex; i++)
+                {
                     tmpStr = fileReader.ReadLine();
                     str = tmpStr.Trim().Split(' ');
                     arrVertex[i, 0] = Convert.ToInt32(str[0].Trim());
@@ -151,82 +180,83 @@ namespace OpenTK_winforms_z02
                 }
                 fileReader.Close();
 
-            } catch (Exception) {
+            }
+            catch (Exception)
+            {
                 statusFiles = false;
                 Console.WriteLine("Fisierul cu informații vertex <" + fileVertex + "> nu exista!");
                 MessageBox.Show("Fisierul cu informații vertex <" + fileVertex + "> nu exista!");
             }
         }
 
-        private void loadQList() {
-
-            //Testăm dacă fișierul există
-            try {
+        private void loadQList()
+        {
+            try
+            {
                 StreamReader fileReader = new StreamReader(fileQList);
-
                 int tmp;
                 string line;
                 nQuadsList = 0;
 
-                while ((line = fileReader.ReadLine()) != null) {
+                while ((line = fileReader.ReadLine()) != null)
+                {
                     tmp = Convert.ToInt32(line.Trim());
                     arrQuadsList[nQuadsList] = tmp;
                     nQuadsList++;
                 }
-
                 fileReader.Close();
-            } catch (Exception) {
+            }
+            catch (Exception)
+            {
                 statusFiles = false;
                 MessageBox.Show("Fisierul cu informații vertex <" + fileQList + "> nu exista!");
             }
-
         }
 
-        private void loadTList() {
-
-            //Testăm dacă fișierul există
-            try {
+        private void loadTList()
+        {
+            try
+            {
                 StreamReader fileReader = new StreamReader(fileTList);
-
                 int tmp;
                 string line;
                 nTrianglesList = 0;
 
-                while ((line = fileReader.ReadLine()) != null) {
+                while ((line = fileReader.ReadLine()) != null)
+                {
                     tmp = Convert.ToInt32(line.Trim());
                     arrTrianglesList[nTrianglesList] = tmp;
                     nTrianglesList++;
                 }
-
                 fileReader.Close();
-            } catch (Exception) {
+            }
+            catch (Exception)
+            {
                 statusFiles = false;
                 MessageBox.Show("Fisierul cu informații vertex <" + fileTList + "> nu exista!");
             }
-
         }
 
         //-----------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------
-        //   CONTROL CAMERĂ
-
-        //Controlul camerei după axa X cu spinner numeric (un cadran).
-        private void numericXeye_ValueChanged(object sender, EventArgs e) {
+        //    CONTROL CAMERĂ
+        private void numericXeye_ValueChanged(object sender, EventArgs e)
+        {
             eyePosX = (int)numericXeye.Value;
-            GlControl1.Invalidate(); //Forțează redesenarea întregului control OpenGL. Modificările vor fi luate în considerare (actualizare).
+            GlControl1.Invalidate();
         }
-        //Controlul camerei după axa Y cu spinner numeric (un cadran).
-        private void numericYeye_ValueChanged(object sender, EventArgs e) {
+        private void numericYeye_ValueChanged(object sender, EventArgs e)
+        {
             eyePosY = (int)numericYeye.Value;
-            GlControl1.Invalidate(); //Forțează redesenarea întregului control OpenGL. Modificările vor fi luate în considerare (actualizare).
+            GlControl1.Invalidate();
         }
-        //Controlul camerei după axa Z cu spinner numeric (un cadran).
-        private void numericZeye_ValueChanged(object sender, EventArgs e) {
+        private void numericZeye_ValueChanged(object sender, EventArgs e)
+        {
             eyePosZ = (int)numericZeye.Value;
-            GlControl1.Invalidate(); //Forțează redesenarea întregului control OpenGL. Modificările vor fi luate în considerare (actualizare).
+            GlControl1.Invalidate();
         }
-        //Controlul adâncimii camerei față de (0,0,0).
-        private void numericCameraDepth_ValueChanged(object sender, EventArgs e) {
+        private void numericCameraDepth_ValueChanged(object sender, EventArgs e)
+        {
             camDepth = 1 + ((float)numericCameraDepth.Value) * 0.1f;
             GlControl1.Invalidate();
         }
@@ -234,205 +264,262 @@ namespace OpenTK_winforms_z02
 
         //-----------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------
-        //   CONTROL MOUSE
-        //Setăm variabila de stare pentru rotația în 2D a mouseului.
-        private void setControlMouse2D(bool status) {
-            if (status == false) {
+        //    CONTROL MOUSE SI TASTATURA (UPDATE)
+
+        private void setControlMouse2D(bool status)
+        {
+            if (status == false)
+            {
                 statusControlMouse2D = false;
                 btnMouseControl2D.Text = "2D mouse control OFF";
-            } else {
+            }
+            else
+            {
                 statusControlMouse2D = true;
                 btnMouseControl2D.Text = "2D mouse control ON";
             }
         }
-        //Setăm variabila de stare pentru rotația în 3D a mouseului.
-        private void setControlMouse3D(bool status) {
-            if (status == false) {
+
+        private void setControlMouse3D(bool status)
+        {
+            if (status == false)
+            {
                 statusControlMouse3D = false;
                 btnMouseControl3D.Text = "3D mouse control OFF";
-            } else {
+            }
+            else
+            {
                 statusControlMouse3D = true;
                 btnMouseControl3D.Text = "3D mouse control ON";
             }
         }
 
-        //Controlul mișcării setului de coordonate cu ajutorul mouseului (în plan 2D/3D)
-        private void btnMouseControl2D_Click(object sender, EventArgs e) {
-            if (statusControlMouse2D == true) {
-                setControlMouse2D(false);
-            } else {
+        private void btnMouseControl2D_Click(object sender, EventArgs e)
+        {
+            if (statusControlMouse2D == true) setControlMouse2D(false);
+            else
+            {
                 setControlMouse3D(false);
                 setControlMouse2D(true);
             }
         }
-        private void btnMouseControl3D_Click(object sender, EventArgs e) {
-            if (statusControlMouse3D == true) {
-                setControlMouse3D(false);
-            } else {
+        private void btnMouseControl3D_Click(object sender, EventArgs e)
+        {
+            if (statusControlMouse3D == true) setControlMouse3D(false);
+            else
+            {
                 setControlMouse2D(false);
                 setControlMouse3D(true);
             }
         }
 
+        private void GlControl1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (statusMouseDown == true)
+            {
+                // Daca apasam CLICK DREAPTA si avem lumina pornita, mutam a doua sursa de lumina
+                if (e.Button == MouseButtons.Right && lightON_1 && lightON)
+                {
+                    // Factor de sensibilitate
+                    float sensitivity = 0.5f;
+                    valuesPosition1[0] += (e.X - mousePos.X) * sensitivity; // Axa X
+                    valuesPosition1[1] -= (e.Y - mousePos.Y) * sensitivity; // Axa Y (inversată pt mouse)
 
-
-        //Mișcarea lumii 3D cu ajutorul mouselui (click'n'drag de mouse).
-        private void GlControl1_MouseMove(object sender, MouseEventArgs e) {
-            if (statusMouseDown == true) {
-                mousePos = new Point(e.X, e.Y);
-                GlControl1.Invalidate();     //Forțează redesenarea întregului control OpenGL. Modificările vor fi luate în considerare (actualizare).
+                    mousePos = new Point(e.X, e.Y);
+                    GlControl1.Invalidate();
+                }
+                else
+                {
+                    // Comportament normal (rotire camera) pentru Click Stanga
+                    mousePos = new Point(e.X, e.Y);
+                    GlControl1.Invalidate();
+                }
             }
         }
-        private void GlControl1_MouseDown(object sender, MouseEventArgs e) {
+        // ----------------------------------------------------------
+
+        private void GlControl1_MouseDown(object sender, MouseEventArgs e)
+        {
             statusMouseDown = true;
+            mousePos = new Point(e.X, e.Y); // Initializam pozitia la click
         }
-        private void GlControl1_MouseUp(object sender, MouseEventArgs e) {
+        private void GlControl1_MouseUp(object sender, MouseEventArgs e)
+        {
             statusMouseDown = false;
         }
 
+        private void GlControl1_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Controlul merge doar dacă iluminarea globală este activă
+            if (lightON == false) return;
 
-        //-----------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------
-        //   CONTROL ILUMINARE
-        //Setăm variabila de stare pentru iluminare.
-        private void setIlluminationStatus(bool status) {
-            if (status == false) {
+            float step = 1.0f;
+
+            switch (e.KeyCode)
+            {
+                case Keys.W: valuesPosition1[2] -= step; break;
+                case Keys.S: valuesPosition1[2] += step; break;
+                case Keys.A: valuesPosition1[0] -= step; break;
+                case Keys.D: valuesPosition1[0] += step; break;
+                case Keys.Q: valuesPosition1[1] += step; break;
+                case Keys.E: valuesPosition1[1] -= step; break;
+
+                case Keys.L:
+                    lightON_1 = !lightON_1;
+                    Console.WriteLine("Lumina 2 Status: " + lightON_1);
+                    break;
+            }
+            GlControl1.Invalidate();
+        }
+        private void setIlluminationStatus(bool status)
+        {
+            if (status == false)
+            {
                 lightON = false;
                 btnLights.Text = "Iluminare OFF";
-            } else {
+            }
+            else
+            {
                 lightON = true;
                 btnLights.Text = "Iluminare ON";
             }
         }
 
-        //Activăm/dezactivăm iluminarea.
-        private void btnLights_Click(object sender, EventArgs e) {
-            if (lightON == false) {
-                setIlluminationStatus(true);
-            } else {
-                setIlluminationStatus(false);
-            }
+        private void btnLights_Click(object sender, EventArgs e)
+        {
+            if (lightON == false) setIlluminationStatus(true);
+            else setIlluminationStatus(false);
+
+            GlControl1.Focus();
             GlControl1.Invalidate();
         }
 
-        //Identifică numărul maxim de lumini pentru implementarea curentă a OpenGL.
-        private void btnLightsNo_Click(object sender, EventArgs e) {
+        private void btnLightsNo_Click(object sender, EventArgs e)
+        {
             int nr = GL.GetInteger(GetPName.MaxLights);
             MessageBox.Show("Nr. maxim de luminii pentru aceasta implementare este <" + nr.ToString() + ">.");
         }
 
-        //Setăm variabila de stare pentru sursa de lumină 0.
-        private void setSource0Status(bool status) {
-            if (status == false) {
+        private void setSource0Status(bool status)
+        {
+            if (status == false)
+            {
                 lightON_0 = false;
                 btnLight0.Text = "Sursa 0 OFF";
-            } else {
+            }
+            else
+            {
                 lightON_0 = true;
                 btnLight0.Text = "Sursa 0 ON";
             }
         }
 
-        //Activăm/dezactivăm sursa 0 de iluminare (doar dacă iluminarea este activă).
-        private void btnLight0_Click(object sender, EventArgs e) {
-            if (lightON == true) {
-                if (lightON_0 == false) {
-                    setSource0Status(true);
-                } else {
-                    setSource0Status(false);
-                }
+        private void btnLight0_Click(object sender, EventArgs e)
+        {
+            if (lightON == true)
+            {
+                if (lightON_0 == false) setSource0Status(true);
+                else setSource0Status(false);
                 GlControl1.Invalidate();
             }
         }
 
-        //Schimbăm poziția sursei 0 de iluminare după axele XYZ.
-        private void setTrackLigh0Default() {
+        private void setTrackLigh0Default()
+        {
             trackLight0PositionX.Value = (int)valuesPosition0[0];
             trackLight0PositionY.Value = (int)valuesPosition0[1];
             trackLight0PositionZ.Value = (int)valuesPosition0[2];
         }
-        private void trackLight0PositionX_Scroll(object sender, EventArgs e) {
+        private void trackLight0PositionX_Scroll(object sender, EventArgs e)
+        {
             valuesPosition0[0] = trackLight0PositionX.Value;
             GlControl1.Invalidate();
         }
-        private void trackLight0PositionY_Scroll(object sender, EventArgs e) {
+        private void trackLight0PositionY_Scroll(object sender, EventArgs e)
+        {
             valuesPosition0[1] = trackLight0PositionY.Value;
             GlControl1.Invalidate();
         }
-        private void trackLight0PositionZ_Scroll(object sender, EventArgs e) {
+        private void trackLight0PositionZ_Scroll(object sender, EventArgs e)
+        {
             valuesPosition0[2] = trackLight0PositionZ.Value;
             GlControl1.Invalidate();
         }
 
-        //Schimbăm culoarea sursei de lumină 0 (ambiental) în domeniul RGB.
-        private void setColorAmbientLigh0Default() {
+        private void setColorAmbientLigh0Default()
+        {
             numericLight0Ambient_Red.Value = (decimal)valuesAmbient0[0];
             numericLight0Ambient_Green.Value = (decimal)valuesAmbient0[1];
             numericLight0Ambient_Blue.Value = (decimal)valuesAmbient0[2];
         }
-        private void numericLight0Ambient_Red_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Ambient_Red_ValueChanged(object sender, EventArgs e)
+        {
             valuesAmbient0[0] = (float)numericLight0Ambient_Red.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Ambient_Green_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Ambient_Green_ValueChanged(object sender, EventArgs e)
+        {
             valuesAmbient0[1] = (float)numericLight0Ambient_Green.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Ambient_Blue_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Ambient_Blue_ValueChanged(object sender, EventArgs e)
+        {
             valuesAmbient0[2] = (float)numericLight0Ambient_Blue.Value / 100;
             GlControl1.Invalidate();
         }
 
-        //Schimbăm culoarea sursei de lumină 0 (difuză) în domeniul RGB.
-        private void setColorDifuseLigh0Default() {
+        private void setColorDifuseLigh0Default()
+        {
             numericLight0Difuse_Red.Value = (decimal)valuesDiffuse0[0];
             numericLight0Difuse_Green.Value = (decimal)valuesDiffuse0[1];
             numericLight0Difuse_Blue.Value = (decimal)valuesDiffuse0[2];
         }
-        private void numericLight0Difuse_Red_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Difuse_Red_ValueChanged(object sender, EventArgs e)
+        {
             valuesDiffuse0[0] = (float)numericLight0Difuse_Red.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Difuse_Green_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Difuse_Green_ValueChanged(object sender, EventArgs e)
+        {
             valuesDiffuse0[1] = (float)numericLight0Difuse_Green.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Difuse_Blue_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Difuse_Blue_ValueChanged(object sender, EventArgs e)
+        {
             valuesDiffuse0[2] = (float)numericLight0Difuse_Blue.Value / 100;
             GlControl1.Invalidate();
         }
 
-        //Schimbăm culoarea sursei de lumină 0 (specular) în domeniul RGB.
-        private void setColorSpecularLigh0Default() {
+        private void setColorSpecularLigh0Default()
+        {
             numericLight0Specular_Red.Value = (decimal)valuesSpecular0[0];
             numericLight0Specular_Green.Value = (decimal)valuesSpecular0[1];
             numericLight0Specular_Blue.Value = (decimal)valuesSpecular0[2];
         }
-        private void numericLight0Specular_Red_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Specular_Red_ValueChanged(object sender, EventArgs e)
+        {
             valuesSpecular0[0] = (float)numericLight0Specular_Red.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Specular_Green_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Specular_Green_ValueChanged(object sender, EventArgs e)
+        {
             valuesSpecular0[1] = (float)numericLight0Specular_Green.Value / 100;
             GlControl1.Invalidate();
         }
-        private void numericLight0Specular_Blue_ValueChanged(object sender, EventArgs e) {
+        private void numericLight0Specular_Blue_ValueChanged(object sender, EventArgs e)
+        {
             valuesSpecular0[2] = (float)numericLight0Specular_Blue.Value / 100;
             GlControl1.Invalidate();
         }
 
-        //Resetare stare sursă de lumină nr. 0.
-        private void setLight0Values() {
-            for (int i = 0; i < valuesAmbientTemplate0.Length; i++) {
-                valuesAmbient0[i] = valuesAmbientTemplate0[i];
-            }
-            for (int i = 0; i < valuesDiffuseTemplate0.Length; i++) {
-                valuesDiffuse0[i] = valuesDiffuseTemplate0[i];
-            }
-            for (int i = 0; i < valuesPositionTemplate0.Length; i++) {
-                valuesPosition0[i] = valuesPositionTemplate0[i];
-            }
+        private void setLight0Values()
+        {
+            for (int i = 0; i < valuesAmbientTemplate0.Length; i++) valuesAmbient0[i] = valuesAmbientTemplate0[i];
+            for (int i = 0; i < valuesDiffuseTemplate0.Length; i++) valuesDiffuse0[i] = valuesDiffuseTemplate0[i];
+            for (int i = 0; i < valuesPositionTemplate0.Length; i++) valuesPosition0[i] = valuesPositionTemplate0[i];
         }
-        private void btnLight0Reset_Click(object sender, EventArgs e) {
+        private void btnLight0Reset_Click(object sender, EventArgs e)
+        {
             setLight0Values();
             setTrackLigh0Default();
             setColorAmbientLigh0Default();
@@ -441,149 +528,161 @@ namespace OpenTK_winforms_z02
             GlControl1.Invalidate();
         }
 
-        //-----------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------
-        //   CONTROL OBIECTE 3D
-        //Setăm variabila de stare pentru afișarea/scunderea sistemului de coordonate.
-        private void setControlAxe(bool status) {
-            if (status == false) {
+        private void setControlAxe(bool status)
+        {
+            if (status == false)
+            {
                 statusControlAxe = false;
                 btnShowAxes.Text = "Axe Oxyz OFF";
-            } else {
+            }
+            else
+            {
                 statusControlAxe = true;
                 btnShowAxes.Text = "Axe Oxyz ON";
             }
         }
 
-        //Controlul axelor de coordonate (ON/OFF).
-        private void btnShowAxes_Click(object sender, EventArgs e) {
-            if (statusControlAxe == true) {
-                setControlAxe(false);
-            } else {
-                setControlAxe(true);
-            }
+        private void btnShowAxes_Click(object sender, EventArgs e)
+        {
+            if (statusControlAxe == true) setControlAxe(false);
+            else setControlAxe(true);
             GlControl1.Invalidate();
         }
 
-        //Setăm variabila de stare pentru desenarea cubului. Valorile acceptabile sunt:
-        //TRIANGLES = cubul este desenat, prin triunghiuri.
-        //QUADS = cubul este desenat, prin quaduri.
-        //OFF (sau orice altceva) = cubul nu este desenat.
-        private void setCubeStatus(string status) {
-            if (status.Trim().ToUpper().Equals("TRIANGLES")) {
-                statusCube = "TRIANGLES";
-            } else if (status.Trim().ToUpper().Equals("QUADS")) {
-                statusCube = "QUADS";
-            } else {
-                statusCube = "OFF";
-            }
+        private void setCubeStatus(string status)
+        {
+            if (status.Trim().ToUpper().Equals("TRIANGLES")) statusCube = "TRIANGLES";
+            else if (status.Trim().ToUpper().Equals("QUADS")) statusCube = "QUADS";
+            else statusCube = "OFF";
         }
-        private void btnCubeQ_Click(object sender, EventArgs e) {
+        private void btnCubeQ_Click(object sender, EventArgs e)
+        {
             statusFiles = true;
             loadVertex();
             loadQList();
             setCubeStatus("QUADS");
             GlControl1.Invalidate();
         }
-        private void btnCubeT_Click(object sender, EventArgs e) {
+        private void btnCubeT_Click(object sender, EventArgs e)
+        {
             statusFiles = true;
             loadVertex();
             loadTList();
             setCubeStatus("TRIANGLES");
             GlControl1.Invalidate();
         }
-        private void btnResetObjects_Click(object sender, EventArgs e) {
+        private void btnResetObjects_Click(object sender, EventArgs e)
+        {
             setCubeStatus("OFF");
             GlControl1.Invalidate();
         }
 
-
-        //-----------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------
-        //   ADMINISTRARE MOD 3D (METODA PRINCIPALĂ)
-        private void GlControl1_Paint(object sender, PaintEventArgs e) {
-            //Resetează buffer-ele la valori default.
+        private void GlControl1_Paint(object sender, PaintEventArgs e)
+        {
             GL.Clear(ClearBufferMask.ColorBufferBit);
             GL.Clear(ClearBufferMask.DepthBufferBit);
 
-            //Culoarea default a mediului.
             GL.ClearColor(Color.Black);
 
-            //Setări preliminară pentru mediul 3D.
-            Matrix4 perspective = Matrix4.CreatePerspectiveFieldOfView(camDepth, 4 / 3, 1, 10000);    //Declararea perspectivei spatiale.
-            Matrix4 lookat = Matrix4.LookAt(eyePosX, eyePosY, eyePosZ, 0, 0, 0, 0, 1, 0);             //Declararea camerei (stare inițială).
+            Matrix4 perspective = Matrix4.CreatePerspectiveFieldOfView(camDepth, 4 / 3, 1, 10000);
+            Matrix4 lookat = Matrix4.LookAt(eyePosX, eyePosY, eyePosZ, 0, 0, 0, 0, 1, 0);
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
             GL.LoadMatrix(ref perspective);
-            GL.MatrixMode(MatrixMode.Modelview);                                                             //Încărcarea modelului camerei.
+            GL.MatrixMode(MatrixMode.Modelview);
             GL.LoadIdentity();
             GL.LoadMatrix(ref lookat);
-            GL.Viewport(0, 0, GlControl1.Width, GlControl1.Height);                                      //Mărimea suprafeței randate (scena 3D este proiectată pe aceasta).
-            GL.Enable(EnableCap.DepthTest);                                                                //Corecții de adâncime.
-            GL.DepthFunc(DepthFunction.Less);                                                                //Corecții de adâncime.
+            GL.Viewport(0, 0, GlControl1.Width, GlControl1.Height);
+            GL.Enable(EnableCap.DepthTest);
+            GL.DepthFunc(DepthFunction.Less);
 
-            //Pornim iluminarea (daca avem permisiunea să o facem).
-            if (lightON == true) {
-                //Permite utilizarea iluminării. Fara aceasta corecție iluminarea nu functioneaza.
+            if (lightON == true)
+            {
                 GL.Enable(EnableCap.Lighting);
-            } else {
-                //Dezactivează utilizarea iluminării.
+            }
+            else
+            {
                 GL.Disable(EnableCap.Lighting);
             }
 
-            //Se creeaza sursa de iluminare. In acest caz folosim o singura sursa.
-            //Numarul de surse de lumini depinde de implementarea OpenGL, dar de obicei cel putin 8 surse sunt posibile simultan.
             GL.Light(LightName.Light0, LightParameter.Ambient, valuesAmbient0);
             GL.Light(LightName.Light0, LightParameter.Diffuse, valuesDiffuse0);
             GL.Light(LightName.Light0, LightParameter.Specular, valuesSpecular0);
             GL.Light(LightName.Light0, LightParameter.Position, valuesPosition0);
 
-            if ((lightON == true) && (lightON_0 == true)) {
-                //Activam sursa 0 de lumina. Fara aceasta actiune nu avem iluminare.
-                GL.Enable(EnableCap.Light0);
-            } else {
-                //Dezactivam sursa 0 de lumina.
-                GL.Disable(EnableCap.Light0);
+            if (lightON == true)
+            {
+                GL.Enable(EnableCap.Lighting);
+                GL.Enable(EnableCap.ColorMaterial);
+                GL.Enable(EnableCap.Normalize);
+                GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.AmbientAndDiffuse);
+            }
+            else
+            {
+                GL.Disable(EnableCap.Lighting);
             }
 
-            //Controlul rotației cu mouse-ul (2D).
-            if (statusControlMouse2D == true) {
+            if (lightON == true && lightON_1 == true)
+            {
+                GL.Enable(EnableCap.Light1);
+
+                GL.Light(LightName.Light1, LightParameter.Ambient, valuesAmbient1);
+                GL.Light(LightName.Light1, LightParameter.Diffuse, valuesDiffuse1);
+                GL.Light(LightName.Light1, LightParameter.Specular, valuesSpecular1);
+                GL.Light(LightName.Light1, LightParameter.Position, valuesPosition1);
+
+                GL.PushMatrix();
+                GL.Translate(valuesPosition1[0], valuesPosition1[1], valuesPosition1[2]);
+                GL.Disable(EnableCap.Lighting);
+                GL.Color3(Color.Yellow);
+
+                float sz = 1.0f;
+                GL.Begin(PrimitiveType.Quads);
+                GL.Vertex3(-sz, sz, -sz); GL.Vertex3(-sz, sz, sz); GL.Vertex3(sz, sz, sz); GL.Vertex3(sz, sz, -sz);
+                GL.Vertex3(-sz, -sz, -sz); GL.Vertex3(sz, -sz, -sz); GL.Vertex3(sz, -sz, sz); GL.Vertex3(-sz, -sz, sz);
+                GL.Vertex3(-sz, -sz, sz); GL.Vertex3(sz, -sz, sz); GL.Vertex3(sz, sz, sz); GL.Vertex3(-sz, sz, sz);
+                GL.Vertex3(-sz, -sz, -sz); GL.Vertex3(-sz, sz, -sz); GL.Vertex3(sz, sz, -sz); GL.Vertex3(sz, -sz, -sz);
+                GL.Vertex3(-sz, -sz, -sz); GL.Vertex3(-sz, -sz, sz); GL.Vertex3(-sz, sz, sz); GL.Vertex3(-sz, sz, -sz);
+                GL.Vertex3(sz, -sz, -sz); GL.Vertex3(sz, sz, -sz); GL.Vertex3(sz, sz, sz); GL.Vertex3(sz, -sz, sz);
+                GL.End();
+
+                GL.Enable(EnableCap.Lighting);
+                GL.PopMatrix();
+            }
+            else
+            {
+                GL.Disable(EnableCap.Light1);
+            }
+
+            if (statusControlMouse2D == true)
+            {
                 GL.Rotate(mousePos.X, 0, 1, 0);
             }
-
-            //Controlul rotației cu mouse-ul (3D).
-            if (statusControlMouse3D == true) {
+            if (statusControlMouse3D == true)
+            {
                 GL.Rotate(mousePos.X, 0, 1, 1);
             }
 
-            //---------------------------
-            //---------------------------
-            //Descrierea obiectelor 3D!!! Axe de coordonate.
-            if (statusControlAxe == true) {
+            if (statusControlAxe == true)
+            {
                 DeseneazaAxe();
             }
 
-            //Desenăm obiectele 3D (cub format din quads sau triunghiuri).
-            if (statusCube.ToUpper().Equals("QUADS")) {
+            if (statusCube.ToUpper().Equals("QUADS"))
+            {
                 DeseneazaCubQ();
-            } else if (statusCube.ToUpper().Equals("TRIANGLES")) {
+            }
+            else if (statusCube.ToUpper().Equals("TRIANGLES"))
+            {
                 DeseneazaCubT();
             }
-
-            //Limitează viteza de randare pentru a nu supraîncarca unitatea GPU (în caz contrar randarea se face cât de rapid este posibil, pe 100% din resurse). 
-            //Dezavantajul este că o viteză prea mică poate afecta negativ cursivitatea animației!
-            //GraphicsContext.CurrentContext.SwapInterval = 1;                                         //Testati cu valori din 10 in 10!!!
-            //GraphicsContext.CurrentContext.VSync = True
 
             GlControl1.SwapBuffers();
         }
 
-
-        //-----------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------
-        //   DESENARE OBIECTE 3D
-        //Desenează axe XYZ.
-        private void DeseneazaAxe() {
+        private void DeseneazaAxe()
+        {
+            GL.Disable(EnableCap.Lighting);
             GL.Begin(PrimitiveType.Lines);
             GL.Color3(Color.Red);
             GL.Vertex3(0, 0, 0);
@@ -599,51 +698,50 @@ namespace OpenTK_winforms_z02
             GL.Vertex3(0, 0, 0);
             GL.Vertex3(0, 0, 75);
             GL.End();
+            if (lightON) GL.Enable(EnableCap.Lighting);
         }
-        //Desenează cubul - quads.
-        private void DeseneazaCubQ() {
+
+        private void DeseneazaCubQ()
+        {
             GL.Begin(PrimitiveType.Quads);
-            for (int i = 0; i < nQuadsList; i++) {
-                switch (i % 4) {
-                    case 0:
-                        GL.Color3(Color.Blue);
-                        break;
-                    case 1:
-                        GL.Color3(Color.Red);
-                        break;
-                    case 2:
-                        GL.Color3(Color.Green);
-                        break;
-                    case 3:
-                        GL.Color3(Color.Yellow);
-                        break;
+            for (int i = 0; i < nQuadsList; i++)
+            {
+
+                switch (i % 4)
+                {
+                    case 0: GL.Color3(Color.Blue); break;
+                    case 1: GL.Color3(Color.Red); break;
+                    case 2: GL.Color3(Color.Green); break;
+                    case 3: GL.Color3(Color.Yellow); break;
                 }
                 int x = arrQuadsList[i];
+
+                GL.Normal3(arrVertex[x, 0], arrVertex[x, 1], arrVertex[x, 2]);
+
                 GL.Vertex3(arrVertex[x, 0], arrVertex[x, 1], arrVertex[x, 2]);
             }
             GL.End();
         }
-        //Desenează cubul - triunghuri.
-        private void DeseneazaCubT() {
+
+        private void DeseneazaCubT()
+        {
             GL.Begin(PrimitiveType.Triangles);
-            for (int i = 0; i < nTrianglesList; i++) {
-                switch (i % 3) {
-                    case 0:
-                        GL.Color3(Color.Blue);
-                        break;
-                    case 1:
-                        GL.Color3(Color.Red);
-                        break;
-                    case 2:
-                        GL.Color3(Color.Green);
-                        break;
+            for (int i = 0; i < nTrianglesList; i++)
+            {
+                switch (i % 3)
+                {
+                    case 0: GL.Color3(Color.Blue); break;
+                    case 1: GL.Color3(Color.Red); break;
+                    case 2: GL.Color3(Color.Green); break;
                 }
                 int x = arrTrianglesList[i];
+
+                GL.Normal3(arrVertex[x, 0], arrVertex[x, 1], arrVertex[x, 2]);
+
                 GL.Vertex3(arrVertex[x, 0], arrVertex[x, 1], arrVertex[x, 2]);
             }
             GL.End();
         }
 
     }
-
 }
